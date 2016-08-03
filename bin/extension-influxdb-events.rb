@@ -18,10 +18,8 @@
 #
 # USAGE:
 #   0) Create the InfluxDB destination database and retention policies:
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE DATABASE sensu_events"
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE RETENTION POLICY raw ON sensu_events DURATION 8w REPLICATION 1 DEFAULT"
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE RETENTION POLICY h5m ON sensu_events DURATION 106w REPLICATION 1"
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE RETENTION POLICY h1h ON sensu_events DURATION 106w REPLICATION 1"
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE DATABASE sensu_events'
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE RETENTION POLICY raw ON sensu_events DURATION 8w REPLICATION 1 DEFAULT'
 #
 #   1) Add the extension-influxdb-events.rb to the Sensu extensions folder (/etc/sensu/extensions)
 #

@@ -18,14 +18,18 @@
 #
 # USAGE:
 #   0) Create the InfluxDB destination database and retention policies:
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE DATABASE sensu_metrics"
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE RETENTION POLICY raw ON sensu_metrics DURATION w REPLICATION 1 DEFAULT"
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE RETENTION POLICY h5m ON sensu_metrics DURATION 106w REPLICATION 1"
-#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode "q=CREATE RETENTION POLICY h1h ON sensu_metrics DURATION 106w REPLICATION 1"
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE DATABASE sensu_metrics'
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE RETENTION POLICY raw ON sensu_metrics DURATION 1w REPLICATION 1 DEFAULT'
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE RETENTION POLICY h5m ON sensu_metrics DURATION 106w REPLICATION 1'
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE RETENTION POLICY h1h ON sensu_metrics DURATION 106w REPLICATION 1'
 #
-#   1) Add the extension-influxdb-metrics.rb to the Sensu extensions folder (/etc/sensu/extensions)
+#   1) Setup continuous queries (CQ) for downsampling the raw metrics:
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE CONTINUOUS QUERY metrics_5m ON sensu_metrics BEGIN SELECT max(value) AS "max", min(value) AS "min", mean(value) AS "mean", median(value) AS "median", sum(value) AS "sum", percentile(value, 90.000) AS "pct90", percentile(value, 95.000) AS "pct95", stddev(value) AS "stddev", count(value) AS "cnt" INTO "h5m".:MEASUREMENT FROM "raw"./.*/ GROUP BY time(5m), "host" END'
+#     curl -vXPOST 'http://localhost:8086/query?pretty=true' --data-urlencode 'q=CREATE CONTINUOUS QUERY metrics_1h ON sensu_metrics BEGIN SELECT max(value) AS "max", min(value) AS "min", mean(value) AS "mean", median(value) AS "median", sum(value) AS "sum", percentile(value, 90.000) AS "pct90", percentile(value, 95.000) AS "pct95", stddev(value) AS "stddev", count(value) AS "cnt" INTO "h1h".:MEASUREMENT FROM "raw"./.*/ GROUP BY time(1h), "host" END'
 #
-#   2) Create the Global InfluxDB configuration and handler for the extention inside the sensu config folder (/etc/sensu/conf.d)
+#   2) Add the extension-influxdb-metrics.rb to the Sensu extensions folder (/etc/sensu/extensions)
+#
+#   3) Create the Global InfluxDB configuration and handler for the extention inside the sensu config folder (/etc/sensu/conf.d)
 #      echo '{ "influxdb-metrics": { "hostname": "127.0.0.1", "db": "sensu_metrics" } }' >/etc/sensu/conf.d/influxdb_cfg.json
 #      echo '{ "handlers": { "metrics": { "type": "set", "handlers": ["influxdb-metrics"] } } }' >/etc/sensu/conf.d/influxdb_handler.json
 #
@@ -153,9 +157,8 @@ module Sensu::Extension
           metrics.push("#{measurement}#{tags} #{fields} #{ts.to_i}")
         end
 
-        @logger.debug("#{@@extension_name}: Stored Metrics in buffer (#{@BUFFER.length}/#{@BUFFER_SIZE}) - #{measurement}#{tags} #{fields} #{ts.to_i}")
         @BUFFER.push(msg.merge({:metrics => metrics}))
-
+        @logger.debug("#{@@extension_name}: Stored Metrics: #{metrics.length} in buffer (#{@BUFFER.length}/#{@BUFFER_SIZE})")
 
         if buffer_try_delay? and (buffer_too_old? or buffer_too_big?)
           flush_buffer
