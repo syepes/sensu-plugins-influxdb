@@ -109,7 +109,8 @@ module Sensu::Extension
         tags_event = {
           :source => @SOURCE,
           :host => event['client']['name'] || nil,
-          :ip => event['client']['address'] || nil
+          :ip => event['client']['address'] || nil,
+          :metric => event['check']['name'] || nil
         }
         tags = create_tags(tags_global.merge(tags_client).merge(tags_check).merge(tags_event))
 
@@ -143,6 +144,9 @@ module Sensu::Extension
           end
 
           fields_metric = {
+            :issued => event['check']['issued'] ? "#{event['check']['issued'].to_i}i" : nil,
+            :executed => event['check']['executed'] ? "#{event['check']['executed'].to_i}i" : nil,
+            :received => event['timestamp'] ? "#{event['timestamp'].to_i}i" : nil,
             :duration => event['check']['duration'].to_f || nil,
             :interval => event['check']['interval'] ? "#{event['check']['interval'].to_i}i" : nil,
             :value => val.to_f || nil
